@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage Title="PowerCopy"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PromptCopy.MainPage"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit">
+
+
+
+    <Grid RowDefinitions="Auto, Auto, Auto, *, Auto" ColumnDefinitions="1*,1*,1*, 1*" VerticalOptions="FillAndExpand">
+
+        <toolkit:Expander IsExpanded="True"  Padding="10,5" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4">
+            <toolkit:Expander.Header>
+                <Label x:Name="lbInput" Text="Input Text (Auto Detect)"  HorizontalTextAlignment="Center"/>
+            </toolkit:Expander.Header>
+            <VerticalStackLayout>
+
+                <Editor x:Name="inputbox" HeightRequest="150"
+                Text="A few things to note here, you must request the ACCESS_SYSTEM_SECURITY access right when opening the process otherwise you can’t access the SACL. You must also explicitly request the SACL when access the process’ security descriptor. We can see the SACL as an SDDL string, which matches with the SDDL string from the tweet/Microsoft web page. The SDDL representation isn’t a great way of understanding a SACL ACE, so I also expand it out in the middle. The expanded form tells us the ACE is an Audit ACE as expected, that the principal user is the Everyone group, the audit is enabled for both success and failure events and that the mask is set to 0x10. "></Editor>
+            </VerticalStackLayout>
+        </toolkit:Expander>
+
+        <Label x:Name="lbOutput"  Text="Translate Output" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" />
+        <Picker x:Name="langPicker" WidthRequest="150" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Margin="10, 5"  SelectedIndex="4">
+            <Picker.ItemsSource>
+                <x:Array Type="{x:Type x:String}">
+                    <x:String>English</x:String>
+                    <x:String>Spanish</x:String>
+                    <x:String>French</x:String>
+                    <x:String>German</x:String>
+                    <x:String>Chinese(ZH-TW)</x:String>
+                    <x:String>Chinese(ZH-CN)</x:String>
+                    <x:String>Japanese</x:String>
+                    <x:String>Korean</x:String>
+                </x:Array>
+            </Picker.ItemsSource>
+        </Picker>
+        <Editor x:Name="outputbox" Text="N/A" Grid.Row="3" VerticalOptions="FillAndExpand" Grid.Column="0" Grid.ColumnSpan="4" Margin="5,0"></Editor>
+
+        <Button 
+            x:Name="translateBtn" Text="Translate It" Margin="10, 5" 
+            Clicked="OnCounterClicked" MaximumWidthRequest="150" Grid.Row="4" Grid.Column="1"  Grid.ColumnSpan="2"/>
+    </Grid>
+</ContentPage>
