@@ -5,7 +5,8 @@ using System.Text;
 
 namespace PromptCopy
 {
-     /// <summary>
+
+    /// <summary>
     /// Enumeration for virtual keys.
     /// </summary>
     public enum VirtualKeys
@@ -397,7 +398,7 @@ namespace PromptCopy
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        public delegate void HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+        public delegate int HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         [DllImport("User32.dll", SetLastError = true, CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
         public static extern int SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hInstance, int threadId);

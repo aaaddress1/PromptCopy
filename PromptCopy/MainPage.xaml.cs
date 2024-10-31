@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Maui.Core.Platform;
 using CommunityToolkit.Maui.PlatformConfiguration.AndroidSpecific;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.ML.OnnxRuntimeGenAI;
 using System;
@@ -12,6 +13,7 @@ using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using static PromptCopy.WinAPI;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace PromptCopy
 {
@@ -62,37 +64,97 @@ namespace PromptCopy
         [DllImport("user32.dll")]
         public static extern short GetAsyncKeyState(int vKey);
 
-        private async void HookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
+        // 引入 user32.dll 的 ShowWindow 函數
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        // 常量，用於設置窗口顯示狀態
+        public const int SW_SHOW = 5;
+        public const int SW_HIDE = 0;
+
+
+        public class ClipboardManager
+        {
+            [DllImport("user32.dll")]
+            private static extern IntPtr GetClipboardData(uint uFormat);
+
+            [DllImport("user32.dll")]
+            private static extern bool IsClipboardFormatAvailable(uint format);
+
+            [DllImport("user32.dll")]
+            private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+            [DllImport("user32.dll")]
+            private static extern bool CloseClipboard();
+
+            private const uint CF_TEXT = 1;
+
+            public static string GetClipboardText()
+            {
+                if (!OpenClipboard(IntPtr.Zero))
+                    return null;
+
+                string clipboardText = null;
+
+                if (IsClipboardFormatAvailable(CF_TEXT))
+                {
+                    IntPtr handle = GetClipboardData(CF_TEXT);
+                    if (handle != IntPtr.Zero)
+                    {
+                        IntPtr pointer = Marshal.StringToHGlobalAnsi(Marshal.PtrToStringAnsi(handle));
+                        clipboardText = Marshal.PtrToStringAnsi(pointer);
+                        Marshal.FreeHGlobal(pointer);
+                    }
+                }
+
+                CloseClipboard();
+
+                return clipboardText;
+            }
+        }
+
+        private int HookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
 
             int vkcode = Marshal.ReadInt32(lParam);
             var funckeyPressDown = (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN);
-            var funckeyPressUp   = (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP);
+            var funckeyPressUp = (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP);
 
             bool ctrlPressed = (GetAsyncKeyState((int)VirtualKeys.Control) & 0x8000) != 0;
             bool altPressed = (GetAsyncKeyState((int)VirtualKeys.Menu) & 0x8000) != 0;
             bool shiftPressed = (GetAsyncKeyState((int)VirtualKeys.LeftShift) & 0x8000) != 0;
 
 
-            //Debug.Print($"[{funckeyPressDown.ToString()}/{funckeyPressUp.ToString()}] VK:{vkcode} nCode: {nCode.ToString()}, ctrl: {ctrlPressed.ToString()}");
+            Debug.Print($"[{funckeyPressDown.ToString()}/{funckeyPressUp.ToString()}] VK:{vkcode} nCode: {nCode.ToString()}, ctrl: {ctrlPressed.ToString()}");
 
-           
-            if (funckeyPressDown && ctrlPressed && vkcode == (int)VirtualKeys.C )
+            if (funckeyPressDown && ctrlPressed && vkcode == (int)VirtualKeys.Return && this.selected_prompt.IsFocused)
+            {
+                this.translateInvoke();
+                return 1;
+            }
+            if (funckeyPressDown && ctrlPressed && vkcode == (int)VirtualKeys.C)
             {
                 if ((Environment.TickCount - lastTicketOfCtrlC) < 300) // less than ~300ms?
                 {
-                 
-                    //Debug.Print("double copy");
+
+                    Debug.Print("double copy");
 
                     // var v = Process.GetCurrentProcess().MainWindowHandle;
                     //var hwnd = ((MauiWinUIWindow)App.Current.Windows[0].Handler.PlatformView).WindowHandle;
-                    var hwnd = ((MauiWinUIWindow)this.Window.Handler.PlatformView).WindowHandle;
 
-                    var clipText = await Clipboard.GetTextAsync();
+                    var clipText = ClipboardManager.GetClipboardText();
                     this.inputbox.Text = clipText;
 
-                   // if (this.translateBtn.IsEnabled) this.translateClicked(this.translateBtn, EventArgs.Empty);
-                    SetForegroundWindow((int) hwnd);
+                    statusbar.Text = $"Copied {inputbox.Text.Length} Text - Press [Ctrl] + [Enter] to finish prompt to run AI analyze.";
+
+                    // if (this.translateBtn.IsEnabled) this.translateClicked(this.translateBtn, EventArgs.Empty);
+#if WINDOWS
+                    var currWin = ((MauiWinUIWindow)this.Window.Handler.PlatformView);
+                    var hwnd = currWin.WindowHandle;
+                    ShowWindow(hwnd, SW_SHOW);
+                    SetForegroundWindow((int)hwnd);
+#endif
+                    this.selected_prompt.Focus();
                 }
                 lastTicketOfCtrlC = Environment.TickCount;
             }
@@ -101,33 +163,29 @@ namespace PromptCopy
             {
                 if ((Environment.TickCount - lastTicketOfCtrl) < 300) // less than ~300ms?
                 {
-
-
-
-                    var clipTextBefore = await Clipboard.GetTextAsync();
+                    Debug.Print("double ctrl");
+                    var clipTextBefore = ClipboardManager.GetClipboardText(); 
 
                     // Get the selected text
                     Thread.Sleep(20);
                     SendCtrlC(GetWindowUnderCursor());
                     Thread.Sleep(30);
-                    var clipTextAfter = await Clipboard.GetTextAsync();
+                    var clipTextAfter = ClipboardManager.GetClipboardText();
                     Clipboard.SetTextAsync(clipTextBefore);
 
                     this.inputbox.Text = clipTextAfter;
 
-                    //Debug.Print("double control");
-
-                    // var v = Process.GetCurrentProcess().MainWindowHandle;
-                    //var hwnd = ((MauiWinUIWindow)App.Current.Windows[0].Handler.PlatformView).WindowHandle;
-                    var hwnd = ((MauiWinUIWindow)this.Window.Handler.PlatformView).WindowHandle;
-
+                    Debug.Print("double control");
+#if WINDOWS
+                    var currWin = ((MauiWinUIWindow)this.Window.Handler.PlatformView);
+                    var hwnd = currWin.WindowHandle;
+                    ShowWindow(hwnd, SW_SHOW);
                     SetForegroundWindow((int)hwnd);
+#endif
                 }
                 lastTicketOfCtrl = Environment.TickCount;
             }
-
-            //if (funckeyPressDown)
-            //   lastkeypressCtrl = funckeyPressDown && ctrlPressed && vkcode == 0;
+            return CallNextHookEx(0, nCode, wParam, lParam);
         }
 
         string modelPath = @"C:\phi3-model\directml\directml-int4-awq-block-128";
@@ -137,11 +195,12 @@ namespace PromptCopy
         public MainPage()
         {
             InitializeComponent();
-            langPicker.SelectedIndex = 4;
+            NavigationPage.SetHasNavigationBar(this, false);
+            //langPicker.SelectedIndex = 4;
             m_HookProcedure = new HookProc(HookProcedure);
             m_hHook = SetWindowsHookEx(WH_KEYBOARD_LL, m_HookProcedure, GetModuleHandle(Process.GetCurrentProcess().MainModule.ModuleName), 0);
 
-            this.translateBtn.IsEnabled = false;
+            this.inputbox.IsEnabled = false;
             this.initThread = (new Thread(() =>
             {
                 if (string.IsNullOrEmpty(modelPath))
@@ -152,13 +211,13 @@ namespace PromptCopy
                 model = new Model(modelPath);
                 tokenizer = new Tokenizer(model);
 
-                MainThread.BeginInvokeOnMainThread(() => this.translateBtn.IsEnabled = true);
+                MainThread.BeginInvokeOnMainThread(() => this.inputbox.IsEnabled = true);
             })
             { IsBackground = true });
             this.initThread.Start();
         }
 
-        private void translateClicked(object sender, EventArgs e)
+        private void translateInvoke()
         {
             if (inputbox.Text.Length < 5)
             {
@@ -166,20 +225,21 @@ namespace PromptCopy
                 return;
             }
             this.initThread.Join();
-            translateBtn.IsEnabled = false;
-            statusbar.Text =  $"Processing user query (length {inputbox.Text.Length} tokens)";
-            var target_lang = this.langPicker.SelectedItem;
+            inputbox.IsEnabled = false;
+            statusbar.Text = $"Processing user query (length {inputbox.Text.Length} tokens)";
+            //var target_lang = this.langPicker.SelectedItem;
             (new Thread(() =>
             {
-                string sysprompt = $"you are an assistant can only response in {target_lang} language, and do the following commands and reply me in human read friendly {target_lang}.";
-                var sequences = tokenizer.Encode( $@"<|system|>{sysprompt}<|end|><|user|>{selected_prompt.Text}:\r\n{inputbox.Text}<|end|><|assistant|>");
+                //string sysprompt = $"All your response can only write in {target_lang} language";
+                //                var sequences = tokenizer.Encode($@"<|system|>{sysprompt}<|end|><|user|>{selected_prompt.Text}:\r\n{inputbox.Text}<|end|><|assistant|>");
+                var sequences = tokenizer.Encode($@"<|user|>{selected_prompt.Text}:\r\n{inputbox.Text}<|end|><|assistant|>");
 
 
                 using GeneratorParams generatorParams = new GeneratorParams(model);
                 generatorParams.SetSearchOption("min_length", 5);
                 generatorParams.SetSearchOption("max_length", inputbox.Text.Length * 2);
-                generatorParams.SetSearchOption("temperature", 0.7); // 設置生成的隨機性
-                generatorParams.SetSearchOption("top_k", 50);        // 設置Top-k取樣
+                //generatorParams.SetSearchOption("temperature", 0.3); // 設置生成的隨機性
+                //generatorParams.SetSearchOption("top_k", 50);        // 設置Top-k取樣
 
                 generatorParams.SetInputSequences(sequences);
 
@@ -187,15 +247,15 @@ namespace PromptCopy
                 using var generator = new Generator(model, generatorParams);
                 var watch = System.Diagnostics.Stopwatch.StartNew();
                 MainThread.BeginInvokeOnMainThread(() => outputbox.Text = "");
-                
+
                 while (!generator.IsDone())
                 {
                     generator.ComputeLogits();
                     generator.GenerateNextToken();
                     var nextWord = tokenizerStream.Decode(generator.GetSequence(0)[^1]);
                     MainThread.BeginInvokeOnMainThread(() => {
-                    outputbox.Text += nextWord;
-                    var progress = (int)(100 * outputbox.Text.Length / inputbox.Text.Length);
+                        outputbox.Text += nextWord;
+                        var progress = (int)(100 * outputbox.Text.Length / inputbox.Text.Length);
                         statusbar.Text = $"Progress ... {progress}% ";
                     });
                 }
@@ -207,11 +267,17 @@ namespace PromptCopy
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    statusbar.Text = ($"\nStreaming Tokens: {totalTokens} Time: {runTimeInSeconds:0.00}\nTokens per second: {totalTokens / runTimeInSeconds:0.00}");
-                    translateBtn.IsEnabled = true;
+                    statusbar.Text = ($"Streaming Tokens: {totalTokens} Time: {runTimeInSeconds:0.00}\nTokens per second: {totalTokens / runTimeInSeconds:0.00}");
+                    inputbox.IsEnabled = true;
                 });
-            }){ IsBackground = true }).Start();
-          
+            })
+            { IsBackground = true }).Start();
+
+        }
+
+        private void inputbox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
         }
     }
 

@@ -13,9 +13,9 @@
      new Window(new AppShell())
      {
          Width = 400,
-         Height = 800,
+         Height = 600,
          X = 100,
-         Y = 100
+         Y = 100,
      };
 
     }

@@ -1,74 +1,38 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage Title="咒術黏貼 PromptCopy"
+<ContentPage Title="" NavigationPage.HasNavigationBar="False"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="PromptCopy.MainPage"
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit">
 
+    <Grid RowDefinitions="Auto, Auto, Auto, *" ColumnDefinitions="1*,1*,1*,1*, 1*, 1*" VerticalOptions="FillAndExpand">
 
+        <!-- Input row#0~1 -->
 
-    <Grid RowDefinitions="Auto, Auto, *, Auto" ColumnDefinitions="1*,1*,1*, 1*" VerticalOptions="FillAndExpand">
-
-        <!-- Prompt UI row#0 -->
-        <toolkit:Expander IsExpanded="True"  Padding="10,0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4">
-            <toolkit:Expander.Header>
-                <Label Text="Choose Prompt" TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"  FontSize="12"  HorizontalTextAlignment="Center" Margin="10,5"/>
-            </toolkit:Expander.Header>
-            <VerticalStackLayout>
-                <Editor x:Name="selected_prompt" HeightRequest="30" Text="Translate the following text to me (but do not include any explanation)"></Editor>
-
-                <Grid ColumnDefinitions="Auto, *"  Padding="5">
-                    <Label FontSize="10"  Text="AI Response Language" HorizontalTextAlignment="Center"  VerticalTextAlignment="Center" Grid.Column="0"/>
-                    <Picker x:Name="langPicker" SelectedIndex="4"  HeightRequest="40"  Grid.Column="1" Margin="10,5">
-                        <Picker.ItemsSource>
-                            <x:Array Type="{x:Type x:String}">
-                                <x:String>English</x:String>
-                                <x:String>Spanish</x:String>
-                                <x:String>French</x:String>
-                                <x:String>German</x:String>
-                                <x:String>Chinese(ZH-TW)</x:String>
-                                <x:String>Chinese(ZH-CN)</x:String>
-                                <x:String>Japanese</x:String>
-                                <x:String>Korean</x:String>
-                            </x:Array>
-                        </Picker.ItemsSource>
-                    </Picker>
-                </Grid>
-            </VerticalStackLayout>
-        </toolkit:Expander>
-
-
-        <!-- Input row#2 -->
-        <toolkit:Expander IsExpanded="True"  Padding="10,0" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" >
-            <toolkit:Expander.Header>
-                <Label Text="Copied Text" TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}"  FontSize="12"  HorizontalTextAlignment="Center" Margin="10,5"/>
-            </toolkit:Expander.Header>
-            <VerticalStackLayout>
-
-                <Editor x:Name="inputbox" HeightRequest="80"
+        <Editor x:Name="inputbox" FontSize="12"  HeightRequest="100" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" Placeholder="Ctrl+C twice or Ctrl twice &#x0a; to copy selected text as input here."
                 Text="A few things to note here, you must request the ACCESS_SYSTEM_SECURITY access right when opening the process otherwise you can’t access the SACL. You must also explicitly request the SACL when access the process’ security descriptor. We can see the SACL as an SDDL string, which matches with the SDDL string from the tweet/Microsoft web page. The SDDL representation isn’t a great way of understanding a SACL ACE, so I also expand it out in the middle. The expanded form tells us the ACE is an Audit ACE as expected, that the principal user is the Everyone group, the audit is enabled for both success and failure events and that the mask is set to 0x10. "
-                Margin="0,5" ></Editor>
-            </VerticalStackLayout>
-        </toolkit:Expander>
+                Margin="5,0" VerticalTextAlignment="Center" HorizontalTextAlignment="Center" TextChanged="inputbox_TextChanged" />
 
-        
+        <Label x:Name="statusbar" TextColor="AntiqueWhite" VerticalTextAlignment="Center" HorizontalTextAlignment="Center"
+                    Text="Double Copy (Ctrl+C) or Ctrl Twice &#x0a; To get Phi3 AI response for selected text everywhere." 
+    Grid.Row="1" Grid.Column="0"  Grid.ColumnSpan="6" Margin="5,5"/>
+
+        <!-- Prompt UI row#2 -->
+        <Label Text="Current Prompt" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="1"
+                TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" 
+                FontSize="12"  HorizontalTextAlignment="Center" VerticalTextAlignment="Center" Margin="0,0"/>
+        <!-- prompt editor 
+        https://github.com/richawo/llm-translator/blob/main/translate.ipynb
+        -->
+        <Editor BackgroundColor="Transparent" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" FontSize="12" HeightRequest="100" Margin="5,0"
+                x:Name="selected_prompt" Text="You are a translation tool, receive a string written in plain text format, and translate it in Chinese without losing the original formatting. Your translations are accurate, aiming not to deviate from the original structure, content, writing style and tone." 
+                VerticalTextAlignment="Center" HorizontalTextAlignment="Start"/>
+    
         <!-- Output row#3 -->
-        <Editor x:Name="outputbox" Text="You should copy something to analyze." Grid.Row="2" VerticalOptions="FillAndExpand" Grid.Column="0" Grid.ColumnSpan="4" Margin="10,0"></Editor>
-
-
-        <!-- Bottom row#4 -->
-        <Button 
-     x:Name="translateBtn" Text="Analyze" Margin="10, 5" 
-     Clicked="translateClicked" MaximumWidthRequest="150" Grid.Row="4" Grid.Column="3"  Grid.ColumnSpan="1"/>
-
-        <Label x:Name="statusbar" TextColor="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" Padding="10" Text="Double Copy (Ctrl+C) or Ctrl Twice &#x0a; to get Phi3 AI response for selected text everywhere." 
-               Grid.Row="4" Grid.Column="0" VerticalTextAlignment="Center" HorizontalTextAlignment="Start" Grid.ColumnSpan="3"/>
-
-
-
-
+        <Editor x:Name="outputbox" IsReadOnly="True"  FontSize="12"  VerticalTextAlignment="Start" HorizontalTextAlignment="Start" Placeholder="You should copy something to analyze." 
+                Grid.Row="3"  Grid.Column="0" Grid.ColumnSpan="6" Margin="5,10"></Editor>
 
     </Grid>
-    
-    
+
+
 </ContentPage>
